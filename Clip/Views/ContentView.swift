@@ -36,7 +36,6 @@ struct ContentView: View {
                     }
                     .padding()
                 }
-                .fixedSize(horizontal: false, vertical: true)
             } else if !mainViewModel.isAnalyzing {
                 VStack(spacing: 8) {
                     Spacer()
@@ -57,9 +56,9 @@ struct ContentView: View {
                 mainViewModel.loadURL(url)
             })
                 .environmentObject(downloadViewModel)
-                .frame(minHeight: 180, maxHeight: .infinity)
+                .frame(height: 200)
         }
-        .frame(minWidth: 500, minHeight: 500)
+        .frame(minWidth: 500, minHeight: 600)
         .onDrop(of: [.url, .text], isTargeted: $isDragOver) { providers in
             handleDrop(providers)
         }
