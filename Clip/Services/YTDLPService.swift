@@ -6,29 +6,55 @@ private let ytdlpLogger = Logger(subsystem: "com.clip.app", category: "yt-dlp")
 actor YTDLPService {
     private let binaryPath: String
 
-    /// Directory containing bundled ffmpeg/ffprobe binaries
-    static let bundledResourceDir: String? = {
-        // Prefer direct resource URL (reliable for extensionless binaries)
+    /// Directory containing bundled yt-dlp, ffmpeg, ffprobe binaries
+    static let bundledResourceDir: String = {
+        // Most reliable: construct from bundle path directly
+        let fromBundlePath = Bundle.main.bundlePath + "/Contents/Resources"
+        if FileManager.default.fileExists(atPath: fromBundlePath + "/ffmpeg") {
+            ytdlpLogger.info("Found bundled binaries at \(fromBundlePath)")
+            return fromBundlePath
+        }
+        // Fallback: resourceURL
         if let resourceURL = Bundle.main.resourceURL {
-            let ffmpegURL = resourceURL.appendingPathComponent("ffmpeg")
-            if FileManager.default.fileExists(atPath: ffmpegURL.path) {
-                return resourceURL.path
+            let path = resourceURL.path
+            if FileManager.default.fileExists(atPath: path + "/ffmpeg") {
+                return path
             }
         }
-        // Fallback: path(forResource:) lookup
-        if let ffmpegPath = Bundle.main.path(forResource: "ffmpeg", ofType: nil) {
-            return (ffmpegPath as NSString).deletingLastPathComponent
-        }
-        return nil
+        // Last resort: return the bundlePath-derived path anyway (binaries might be added later)
+        ytdlpLogger.warning("ffmpeg not found in Resources — clip downloads will fail")
+        return fromBundlePath
     }()
+
+    /// Resolve a bundled binary, falling back to system PATH
+    private static func resolveBinary(_ name: String) -> String {
+        let bundledPath = bundledResourceDir + "/" + name
+        if FileManager.default.fileExists(atPath: bundledPath) {
+            ytdlpLogger.info("Using bundled \(name) at \(bundledPath)")
+            return bundledPath
+        }
+        // Fallback: look in PATH
+        let whichProcess = Process()
+        let pipe = Pipe()
+        whichProcess.executableURL = URL(fileURLWithPath: "/usr/bin/which")
+        whichProcess.arguments = [name]
+        whichProcess.standardOutput = pipe
+        whichProcess.standardError = FileHandle.nullDevice
+        try? whichProcess.run()
+        whichProcess.waitUntilExit()
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        let path = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !path.isEmpty {
+            ytdlpLogger.info("Using system \(name) at \(path)")
+            return path
+        }
+        ytdlpLogger.error("\(name) not found in bundle or system PATH")
+        return bundledPath // Return bundled path anyway — ensureExecutable will catch it
+    }
 
     static let enrichedEnvironment: [String: String] = {
         var env = ProcessInfo.processInfo.environment
-        var extraPaths = ["/opt/homebrew/bin", "/usr/local/bin", "/opt/homebrew/sbin"]
-        // Include bundled Resources dir so yt-dlp can find ffmpeg in PATH too
-        if let resourceDir = bundledResourceDir {
-            extraPaths.insert(resourceDir, at: 0)
-        }
+        var extraPaths = [bundledResourceDir, "/opt/homebrew/bin", "/usr/local/bin", "/opt/homebrew/sbin"]
         let currentPath = env["PATH"] ?? "/usr/bin:/bin"
         let newPaths = extraPaths.filter { !currentPath.contains($0) }
         if !newPaths.isEmpty {
@@ -38,22 +64,7 @@ actor YTDLPService {
     }()
 
     init() {
-        if let bundledPath = Bundle.main.path(forResource: "yt-dlp", ofType: nil) {
-            self.binaryPath = bundledPath
-        } else {
-            // Fallback: look in PATH
-            let whichProcess = Process()
-            let pipe = Pipe()
-            whichProcess.executableURL = URL(fileURLWithPath: "/usr/bin/which")
-            whichProcess.arguments = ["yt-dlp"]
-            whichProcess.standardOutput = pipe
-            whichProcess.standardError = FileHandle.nullDevice
-            try? whichProcess.run()
-            whichProcess.waitUntilExit()
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            let path = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            self.binaryPath = path.isEmpty ? "/opt/homebrew/bin/yt-dlp" : path
-        }
+        self.binaryPath = Self.resolveBinary("yt-dlp")
     }
 
     func ensureExecutable() throws {
@@ -152,24 +163,46 @@ actor YTDLPService {
 
         var args: [String] = []
 
-        // Point yt-dlp to bundled ffmpeg so --force-keyframes-at-cuts and merging work
-        if let resourceDir = Self.bundledResourceDir {
-            // Ensure ffmpeg/ffprobe are executable (may have been stripped by update/quarantine)
-            for bin in ["ffmpeg", "ffprobe"] {
-                let binPath = (resourceDir as NSString).appendingPathComponent(bin)
-                if fm.fileExists(atPath: binPath) && !fm.isExecutableFile(atPath: binPath) {
-                    let chmod = Process()
-                    chmod.executableURL = URL(fileURLWithPath: "/bin/chmod")
-                    chmod.arguments = ["+x", binPath]
-                    try? chmod.run()
-                    chmod.waitUntilExit()
-                }
+        // Ensure ffmpeg/ffprobe are executable and signed (may have been stripped by update/quarantine)
+        let resourceDir = Self.bundledResourceDir
+        for bin in ["ffmpeg", "ffprobe"] {
+            let binPath = resourceDir + "/" + bin
+            guard fm.fileExists(atPath: binPath) else {
+                ytdlpLogger.error("\(bin) not found at \(binPath)")
+                continue
             }
-            args += ["--ffmpeg-location", resourceDir]
-            ytdlpLogger.info("Using bundled ffmpeg at \(resourceDir)")
-        } else {
-            ytdlpLogger.warning("Bundled ffmpeg not found — clip downloads may fail")
+            if !fm.isExecutableFile(atPath: binPath) {
+                ytdlpLogger.info("Fixing executable permission on \(bin)")
+                let chmod = Process()
+                chmod.executableURL = URL(fileURLWithPath: "/bin/chmod")
+                chmod.arguments = ["+x", binPath]
+                try? chmod.run()
+                chmod.waitUntilExit()
+            }
+            // Verify the binary can actually execute — re-sign if not
+            let test = Process()
+            test.executableURL = URL(fileURLWithPath: binPath)
+            test.arguments = ["-version"]
+            test.standardOutput = FileHandle.nullDevice
+            test.standardError = FileHandle.nullDevice
+            do {
+                try test.run()
+                test.waitUntilExit()
+                if test.terminationStatus != 0 {
+                    throw NSError(domain: "clip", code: 1)
+                }
+            } catch {
+                ytdlpLogger.info("Re-signing \(bin) after failed execution test")
+                let codesign = Process()
+                codesign.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
+                codesign.arguments = ["--force", "--sign", "-", "--timestamp=none", binPath]
+                try? codesign.run()
+                codesign.waitUntilExit()
+            }
         }
+        // Always tell yt-dlp where to find ffmpeg
+        args += ["--ffmpeg-location", resourceDir]
+        ytdlpLogger.info("ffmpeg-location set to \(resourceDir)")
 
         if let cookieArgs = Self.cookieArgs(for: url) {
             args += cookieArgs

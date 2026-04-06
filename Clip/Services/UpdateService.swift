@@ -173,7 +173,7 @@ class UpdateService: ObservableObject {
             try xattr2.run()
             xattr2.waitUntilExit()
 
-            // Restore executable permissions on bundled binaries
+            // Restore executable permissions and ad-hoc sign bundled binaries
             let resourcesDir = currentAppPath + "/Contents/Resources"
             for binary in ["yt-dlp", "ffmpeg", "ffprobe"] {
                 let binPath = resourcesDir + "/" + binary
@@ -183,6 +183,13 @@ class UpdateService: ObservableObject {
                     chmod.arguments = ["+x", binPath]
                     try chmod.run()
                     chmod.waitUntilExit()
+
+                    // Re-sign so macOS doesn't block execution
+                    let codesign = Process()
+                    codesign.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
+                    codesign.arguments = ["--force", "--sign", "-", "--timestamp=none", binPath]
+                    try? codesign.run()
+                    codesign.waitUntilExit()
                 }
             }
 
