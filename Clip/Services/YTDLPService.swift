@@ -6,9 +6,29 @@ private let ytdlpLogger = Logger(subsystem: "com.clip.app", category: "yt-dlp")
 actor YTDLPService {
     private let binaryPath: String
 
+    /// Directory containing bundled ffmpeg/ffprobe binaries
+    static let bundledResourceDir: String? = {
+        // Prefer direct resource URL (reliable for extensionless binaries)
+        if let resourceURL = Bundle.main.resourceURL {
+            let ffmpegURL = resourceURL.appendingPathComponent("ffmpeg")
+            if FileManager.default.fileExists(atPath: ffmpegURL.path) {
+                return resourceURL.path
+            }
+        }
+        // Fallback: path(forResource:) lookup
+        if let ffmpegPath = Bundle.main.path(forResource: "ffmpeg", ofType: nil) {
+            return (ffmpegPath as NSString).deletingLastPathComponent
+        }
+        return nil
+    }()
+
     static let enrichedEnvironment: [String: String] = {
         var env = ProcessInfo.processInfo.environment
-        let extraPaths = ["/opt/homebrew/bin", "/usr/local/bin", "/opt/homebrew/sbin"]
+        var extraPaths = ["/opt/homebrew/bin", "/usr/local/bin", "/opt/homebrew/sbin"]
+        // Include bundled Resources dir so yt-dlp can find ffmpeg in PATH too
+        if let resourceDir = bundledResourceDir {
+            extraPaths.insert(resourceDir, at: 0)
+        }
         let currentPath = env["PATH"] ?? "/usr/bin:/bin"
         let newPaths = extraPaths.filter { !currentPath.contains($0) }
         if !newPaths.isEmpty {
@@ -133,9 +153,11 @@ actor YTDLPService {
         var args: [String] = []
 
         // Point yt-dlp to bundled ffmpeg so --force-keyframes-at-cuts and merging work
-        if let ffmpegPath = Bundle.main.path(forResource: "ffmpeg", ofType: nil) {
-            let resourceDir = (ffmpegPath as NSString).deletingLastPathComponent
+        if let resourceDir = Self.bundledResourceDir {
             args += ["--ffmpeg-location", resourceDir]
+            ytdlpLogger.info("Using bundled ffmpeg at \(resourceDir)")
+        } else {
+            ytdlpLogger.warning("Bundled ffmpeg not found — clip downloads may fail")
         }
 
         if let cookieArgs = Self.cookieArgs(for: url) {

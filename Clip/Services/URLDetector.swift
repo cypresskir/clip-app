@@ -37,10 +37,11 @@ struct URLDetector {
     static func isValidURL(_ urlString: String) -> Bool {
         guard let url = URL(string: urlString),
               let scheme = url.scheme,
-              ["http", "https"].contains(scheme) else {
+              ["http", "https"].contains(scheme),
+              url.host != nil else {
             return false
         }
-        return detectPlatform(from: urlString) != .unknown
+        return true
     }
 
     /// Normalize a URL for duplicate detection: strip tracking params, expand short links, lowercase host.

@@ -39,7 +39,7 @@ class MainViewModel: ObservableObject {
     func analyze() async {
         let trimmed = urlText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard URLDetector.isValidURL(trimmed) else {
-            errorMessage = "Unsupported URL. Paste a YouTube, X, or Instagram link."
+            errorMessage = "Invalid URL. Paste a valid video link."
             return
         }
 
