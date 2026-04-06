@@ -154,6 +154,17 @@ actor YTDLPService {
 
         // Point yt-dlp to bundled ffmpeg so --force-keyframes-at-cuts and merging work
         if let resourceDir = Self.bundledResourceDir {
+            // Ensure ffmpeg/ffprobe are executable (may have been stripped by update/quarantine)
+            for bin in ["ffmpeg", "ffprobe"] {
+                let binPath = (resourceDir as NSString).appendingPathComponent(bin)
+                if fm.fileExists(atPath: binPath) && !fm.isExecutableFile(atPath: binPath) {
+                    let chmod = Process()
+                    chmod.executableURL = URL(fileURLWithPath: "/bin/chmod")
+                    chmod.arguments = ["+x", binPath]
+                    try? chmod.run()
+                    chmod.waitUntilExit()
+                }
+            }
             args += ["--ffmpeg-location", resourceDir]
             ytdlpLogger.info("Using bundled ffmpeg at \(resourceDir)")
         } else {

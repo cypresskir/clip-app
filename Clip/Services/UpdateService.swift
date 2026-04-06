@@ -173,6 +173,19 @@ class UpdateService: ObservableObject {
             try xattr2.run()
             xattr2.waitUntilExit()
 
+            // Restore executable permissions on bundled binaries
+            let resourcesDir = currentAppPath + "/Contents/Resources"
+            for binary in ["yt-dlp", "ffmpeg", "ffprobe"] {
+                let binPath = resourcesDir + "/" + binary
+                if FileManager.default.fileExists(atPath: binPath) {
+                    let chmod = Process()
+                    chmod.executableURL = URL(fileURLWithPath: "/bin/chmod")
+                    chmod.arguments = ["+x", binPath]
+                    try chmod.run()
+                    chmod.waitUntilExit()
+                }
+            }
+
             downloadProgress = 1.0
             updateLogger.info("Update installed successfully, relaunching...")
 
