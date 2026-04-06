@@ -9,7 +9,7 @@ private let updateLogger = Logger(subsystem: "com.clip.app", category: "updates"
 @MainActor
 class UpdateService: ObservableObject {
     /// Set this to your GitHub repo in "owner/repo" format.
-    static let githubRepo = "user/clip-app"
+    static let githubRepo = "cypresskir/clip-app"
 
     /// Current app version from Info.plist
     static var currentVersion: String {
