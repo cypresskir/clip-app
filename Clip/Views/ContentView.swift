@@ -4,6 +4,7 @@ struct ContentView: View {
     @StateObject private var mainViewModel = MainViewModel()
     @EnvironmentObject var downloadViewModel: DownloadViewModel
     @State private var isDragOver = false
+    @State private var downloadSectionHeight: CGFloat = 200
 
     var body: some View {
         VStack(spacing: 0) {
@@ -49,14 +50,37 @@ struct ContentView: View {
                 }
             }
 
-            Divider()
+            // Draggable divider
+            Rectangle()
+                .fill(Color.clear)
+                .frame(height: 6)
+                .contentShape(Rectangle())
+                .overlay(
+                    Rectangle()
+                        .fill(.separator)
+                        .frame(height: 1)
+                )
+                .onHover { hovering in
+                    if hovering {
+                        NSCursor.resizeUpDown.push()
+                    } else {
+                        NSCursor.pop()
+                    }
+                }
+                .gesture(
+                    DragGesture()
+                        .onChanged { value in
+                            let delta = -value.translation.height
+                            downloadSectionHeight = max(100, min(400, downloadSectionHeight + delta))
+                        }
+                )
 
             // Downloads + History section with folder tabs
             DownloadSectionView(selectedURL: mainViewModel.urlText, onSelectURL: { url in
                 mainViewModel.loadURL(url)
             })
                 .environmentObject(downloadViewModel)
-                .frame(height: 200)
+                .frame(height: downloadSectionHeight)
         }
         .frame(minWidth: 500, minHeight: 600)
         .onDrop(of: [.url, .text], isTargeted: $isDragOver) { providers in
