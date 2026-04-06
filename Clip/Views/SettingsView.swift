@@ -8,6 +8,7 @@ struct SettingsView: View {
     @AppStorage("preferredResolution") private var preferredResolution = 1080
     @AppStorage("maxConcurrentDownloads") private var maxConcurrent = 3
     @State private var openAtLogin = SMAppService.mainApp.status == .enabled
+    @ObservedObject var updateService: UpdateService
 
     var body: some View {
         Form {
@@ -87,16 +88,16 @@ struct SettingsView: View {
                 HStack {
                     Text("Updates")
                     Spacer()
-                    if ClipAppDelegate.updateService.isChecking {
+                    if updateService.isChecking {
                         ProgressView()
                             .controlSize(.small)
                         Text("Checking...")
                             .foregroundStyle(.secondary)
-                    } else if let release = ClipAppDelegate.updateService.updateAvailable {
+                    } else if let release = updateService.updateAvailable {
                         Text("v\(release.version) available")
                             .foregroundStyle(ClipTheme.accent)
                         Button("Update") {
-                            Task { await ClipAppDelegate.updateService.downloadAndInstall() }
+                            Task { await updateService.downloadAndInstall() }
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
@@ -104,7 +105,7 @@ struct SettingsView: View {
                         Text("Up to date")
                             .foregroundStyle(.secondary)
                         Button("Check Now") {
-                            Task { await ClipAppDelegate.updateService.checkForUpdate() }
+                            Task { await updateService.checkForUpdate() }
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)

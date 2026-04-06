@@ -201,23 +201,39 @@ class UpdateService: ObservableObject {
     // MARK: - Private
 
     private func downloadWithProgress(from url: URL, expectedSize: Int) async throws -> (URL, URLResponse) {
-        let (bytes, response) = try await URLSession.shared.bytes(from: url)
         let tempFile = FileManager.default.temporaryDirectory.appendingPathComponent("clip_update_\(UUID().uuidString).zip")
-        var data = Data()
-        data.reserveCapacity(expectedSize)
 
-        for try await byte in bytes {
-            data.append(byte)
-            if expectedSize > 0 {
-                let progress = Double(data.count) / Double(expectedSize)
-                if Int(progress * 100) != Int(downloadProgress * 100) {
-                    downloadProgress = min(progress * 0.9, 0.9) // Cap at 90%, last 10% is extraction
-                }
+        let delegate = DownloadProgressDelegate(expectedSize: expectedSize) { [weak self] progress in
+            Task { @MainActor in
+                self?.downloadProgress = min(progress * 0.9, 0.9)
             }
         }
 
-        try data.write(to: tempFile)
-        return (tempFile, response)
+        let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
+        let request = URLRequest(url: url)
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let task = session.downloadTask(with: request) { localURL, response, error in
+                if let error = error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                guard let localURL = localURL, let response = response else {
+                    continuation.resume(throwing: UpdateError.extractionFailed)
+                    return
+                }
+                do {
+                    if FileManager.default.fileExists(atPath: tempFile.path) {
+                        try FileManager.default.removeItem(at: tempFile)
+                    }
+                    try FileManager.default.moveItem(at: localURL, to: tempFile)
+                    continuation.resume(returning: (tempFile, response))
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+            task.resume()
+        }
     }
 
     private func relaunch() {
@@ -240,6 +256,27 @@ class UpdateService: ObservableObject {
             if rv < lv { return false }
         }
         return false
+    }
+}
+
+private class DownloadProgressDelegate: NSObject, URLSessionDownloadDelegate {
+    let expectedSize: Int
+    let onProgress: (Double) -> Void
+
+    init(expectedSize: Int, onProgress: @escaping (Double) -> Void) {
+        self.expectedSize = expectedSize
+        self.onProgress = onProgress
+    }
+
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
+        let total = totalBytesExpectedToWrite > 0 ? totalBytesExpectedToWrite : Int64(expectedSize)
+        guard total > 0 else { return }
+        let progress = Double(totalBytesWritten) / Double(total)
+        onProgress(progress)
+    }
+
+    func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
+        // Handled in completion handler
     }
 }
 

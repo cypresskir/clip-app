@@ -14,7 +14,7 @@ struct ClipApp: App {
         .defaultSize(width: 600, height: 700)
 
         Settings {
-            SettingsView()
+            SettingsView(updateService: ClipAppDelegate.updateService)
         }
     }
 }
