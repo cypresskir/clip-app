@@ -1,0 +1,23 @@
+# Xcode
+*.xcodeproj/
+xcuserdata/
+*.xcworkspace/
+DerivedData/
+build/
+
+# Bundled binaries (too large for git — users download separately or use DMG)
+Clip/Resources/bin/yt-dlp
+Clip/Resources/bin/ffmpeg
+Clip/Resources/bin/ffprobe
+
+# DMG output
+*.dmg
+
+# macOS
+.DS_Store
+*.swp
+*~
+
+# Temporary files
+*.part
+*.ytdl

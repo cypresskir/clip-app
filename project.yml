@@ -1,0 +1,43 @@
+name: Clip
+options:
+  bundleIdPrefix: com.clip
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "15.0"
+  minimumXcodeGenVersion: "2.30"
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+targets:
+  Clip:
+    type: application
+    platform: macOS
+    sources:
+      - path: Clip
+        excludes:
+          - Resources/bin
+    postCompileScripts:
+      - script: |
+          RESOURCES_DIR="${BUILT_PRODUCTS_DIR}/${CONTENTS_FOLDER_PATH}/Resources"
+          for bin in yt-dlp ffmpeg ffprobe; do
+            cp "${PROJECT_DIR}/Clip/Resources/bin/${bin}" "${RESOURCES_DIR}/${bin}"
+            chmod +x "${RESOURCES_DIR}/${bin}"
+            codesign --force --sign - --timestamp=none "${RESOURCES_DIR}/${bin}"
+          done
+        name: Bundle and Sign Binaries
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.clip.app
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        INFOPLIST_KEY_NSMainNibFile: ""
+        INFOPLIST_KEY_NSPrincipalClass: NSApplication
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.utilities"
+        INFOPLIST_KEY_CFBundleDisplayName: Clip
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_ENTITLEMENTS: Clip/Clip.entitlements
