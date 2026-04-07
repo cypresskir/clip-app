@@ -163,36 +163,18 @@ actor YTDLPService {
 
         var args: [String] = []
 
-        // Ensure ffmpeg/ffprobe are executable and signed (may have been stripped by update/quarantine)
+        // Ensure ffmpeg/ffprobe are executable (may have been stripped by update/quarantine)
         let resourceDir = Self.bundledResourceDir
         for bin in ["ffmpeg", "ffprobe"] {
             let binPath = resourceDir + "/" + bin
-            guard fm.fileExists(atPath: binPath) else {
-                ytdlpLogger.error("\(bin) not found at \(binPath)")
-                continue
-            }
-            if !fm.isExecutableFile(atPath: binPath) {
+            if fm.fileExists(atPath: binPath) && !fm.isExecutableFile(atPath: binPath) {
                 ytdlpLogger.info("Fixing executable permission on \(bin)")
                 let chmod = Process()
                 chmod.executableURL = URL(fileURLWithPath: "/bin/chmod")
                 chmod.arguments = ["+x", binPath]
                 try? chmod.run()
                 chmod.waitUntilExit()
-            }
-            // Verify the binary can actually execute — re-sign if not
-            let test = Process()
-            test.executableURL = URL(fileURLWithPath: binPath)
-            test.arguments = ["-version"]
-            test.standardOutput = FileHandle.nullDevice
-            test.standardError = FileHandle.nullDevice
-            do {
-                try test.run()
-                test.waitUntilExit()
-                if test.terminationStatus != 0 {
-                    throw NSError(domain: "clip", code: 1)
-                }
-            } catch {
-                ytdlpLogger.info("Re-signing \(bin) after failed execution test")
+                // Re-sign after chmod
                 let codesign = Process()
                 codesign.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
                 codesign.arguments = ["--force", "--sign", "-", "--timestamp=none", binPath]

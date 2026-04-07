@@ -1,9 +1,24 @@
 import Foundation
 
-struct DiagEntry {
+struct DiagEntry: Identifiable {
+    let id = UUID()
     let label: String
     let value: String
     let ok: Bool
+}
+
+@MainActor
+class BinaryDiagnosticsModel: ObservableObject {
+    @Published var entries: [DiagEntry] = [DiagEntry(label: "Status", value: "Running checks...", ok: true)]
+
+    func runChecks() {
+        Task.detached {
+            let results = BinaryDiagnostics.run()
+            await MainActor.run {
+                self.entries = results
+            }
+        }
+    }
 }
 
 enum BinaryDiagnostics {
@@ -44,7 +59,6 @@ enum BinaryDiagnostics {
                     ok: executable
                 ))
 
-                // Test if it actually runs
                 let (runs, detail) = testBinary(path: path, arg: bin == "yt-dlp" ? "--version" : "-version")
                 entries.append(DiagEntry(
                     label: "\(bin) runs",
@@ -62,7 +76,6 @@ enum BinaryDiagnostics {
                 args: ["--ffmpeg-location", resourceDir, "--verbose", "--version"],
                 env: YTDLPService.enrichedEnvironment
             )
-            // Extract ffmpeg version from verbose output
             if let range = verboseOutput.range(of: "ffmpeg") {
                 let context = String(verboseOutput[range.lowerBound...].prefix(80))
                 entries.append(DiagEntry(label: "yt-dlp sees ffmpeg", value: context, ok: true))

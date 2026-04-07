@@ -9,6 +9,7 @@ struct SettingsView: View {
     @AppStorage("maxConcurrentDownloads") private var maxConcurrent = 3
     @State private var openAtLogin = SMAppService.mainApp.status == .enabled
     @ObservedObject var updateService: UpdateService
+    @StateObject private var diagModel = BinaryDiagnosticsModel()
 
     var body: some View {
         Form {
@@ -116,8 +117,7 @@ struct SettingsView: View {
             }
 
             Section {
-                let diag = BinaryDiagnostics.run()
-                ForEach(diag, id: \.label) { entry in
+                ForEach(diagModel.entries) { entry in
                     HStack {
                         Text(entry.label)
                         Spacer()
@@ -132,6 +132,7 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .frame(width: 450, height: 520)
+        .onAppear { diagModel.runChecks() }
     }
 
 }
