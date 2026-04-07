@@ -37,6 +37,7 @@ enum Platform: String, Codable {
         case .x: return "PlatformX"
         case .tiktok: return "PlatformTikTok"
         case .instagram: return "PlatformInstagram"
+        case .reddit: return "PlatformReddit"
         default: return nil
         }
     }

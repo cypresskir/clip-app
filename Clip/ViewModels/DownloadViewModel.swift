@@ -91,12 +91,16 @@ class DownloadViewModel: ObservableObject {
 
         let itemId = item.id
         do {
+            // Use Reddit post title for filename when downloading resolved URLs
+            let titleOverride = item.resolvedURL != nil ? item.metadata?.title : nil
+
             let process = try ytdlpService.startDownload(
                 url: item.downloadURL,
                 formatId: formatId,
                 outputFormat: item.selectedFormat,
                 resolution: item.selectedResolution,
                 clipRange: clipRange,
+                titleOverride: titleOverride,
                 outputDirectory: saveDirectory,
                 onProgress: { [weak self] percent, speed, eta in
                     Task { @MainActor in

@@ -145,6 +145,7 @@ actor YTDLPService {
         outputFormat: OutputFormat,
         resolution: OutputResolution,
         clipRange: ClipRange? = nil,
+        titleOverride: String? = nil,
         outputDirectory: String,
         onProgress: @escaping @Sendable (Double, String, String) -> Void,
         onComplete: @escaping @Sendable (String?, String?) -> Void
@@ -230,7 +231,17 @@ actor YTDLPService {
         } else {
             clipSuffix = ""
         }
-        let outputTemplate = "\(outputDirectory)/%(title).100s_\(resolution.rawValue)p\(clipSuffix).%(ext)s"
+        let outputTemplate: String
+        if let title = titleOverride {
+            // Sanitize title for filename
+            let safe = title.replacingOccurrences(of: "/", with: "-")
+                .replacingOccurrences(of: ":", with: "-")
+                .replacingOccurrences(of: "\"", with: "")
+                .prefix(100)
+            outputTemplate = "\(outputDirectory)/\(safe)_\(resolution.rawValue)p\(clipSuffix).%(ext)s"
+        } else {
+            outputTemplate = "\(outputDirectory)/%(title).100s_\(resolution.rawValue)p\(clipSuffix).%(ext)s"
+        }
         args += ["-o", outputTemplate]
         args += ["--newline", "--progress"]
         args += ["--no-overwrites"]

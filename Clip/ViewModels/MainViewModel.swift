@@ -53,13 +53,27 @@ class MainViewModel: ObservableObject {
         do {
             // Reddit URLs need preprocessing — yt-dlp's Reddit extractor is broken
             var resolvedURL = trimmed
+            var redditInfo: ResolvedRedditVideo?
             if RedditResolver.isRedditURL(trimmed) {
                 let resolved = try await RedditResolver.resolve(trimmed)
                 resolvedURL = resolved.videoURL
                 item.resolvedURL = resolvedURL
+                redditInfo = resolved
             }
 
-            let metadata = try await ytdlpService.fetchMetadata(url: resolvedURL)
+            var metadata = try await ytdlpService.fetchMetadata(url: resolvedURL)
+
+            // Override yt-dlp metadata with Reddit post info (HLS streams have no useful titles)
+            if let reddit = redditInfo {
+                metadata.title = reddit.title
+                if let dur = reddit.duration, metadata.duration == nil {
+                    metadata.duration = dur
+                }
+                if metadata.thumbnail == nil, let thumb = reddit.thumbnailURL {
+                    metadata.thumbnail = thumb
+                }
+            }
+
             item.metadata = metadata
             item.status = .ready
 

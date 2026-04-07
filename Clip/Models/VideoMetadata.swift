@@ -1,9 +1,9 @@
 import Foundation
 
 struct VideoMetadata: Codable {
-    let title: String?
-    let thumbnail: String?
-    let duration: Double?
+    var title: String?
+    var thumbnail: String?
+    var duration: Double?
     let uploadDate: String?
     let formats: [VideoFormat]
 
