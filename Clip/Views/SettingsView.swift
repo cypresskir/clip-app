@@ -114,9 +114,24 @@ struct SettingsView: View {
             } header: {
                 Text("About")
             }
+
+            Section {
+                let diag = BinaryDiagnostics.run()
+                ForEach(diag, id: \.label) { entry in
+                    HStack {
+                        Text(entry.label)
+                        Spacer()
+                        Text(entry.value)
+                            .foregroundStyle(entry.ok ? .secondary : ClipTheme.coral)
+                            .textSelection(.enabled)
+                    }
+                }
+            } header: {
+                Text("Diagnostics")
+            }
         }
         .formStyle(.grouped)
-        .frame(width: 450, height: 420)
+        .frame(width: 450, height: 520)
     }
 
 }
