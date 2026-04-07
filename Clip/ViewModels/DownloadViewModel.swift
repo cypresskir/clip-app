@@ -83,7 +83,7 @@ class DownloadViewModel: ObservableObject {
     }
 
     private func beginDownload(for item: DownloadItem) {
-        downloadLogger.info("Starting download: \(item.url, privacy: .public)")
+        downloadLogger.info("Starting download: \(item.downloadURL, privacy: .public)")
         ensureSaveDirectoryExists()
 
         let formatId = item.bestFormatId(for: item.selectedFormat, resolution: item.selectedResolution)
@@ -92,7 +92,7 @@ class DownloadViewModel: ObservableObject {
         let itemId = item.id
         do {
             let process = try ytdlpService.startDownload(
-                url: item.url,
+                url: item.downloadURL,
                 formatId: formatId,
                 outputFormat: item.selectedFormat,
                 resolution: item.selectedResolution,
@@ -249,8 +249,16 @@ class DownloadViewModel: ObservableObject {
         downloads.insert(item, at: 0)
 
         do {
+            // Resolve Reddit URLs to direct video URLs
+            var fetchURL = url
+            if RedditResolver.isRedditURL(url) {
+                let resolved = try await RedditResolver.resolve(url)
+                fetchURL = resolved.videoURL
+                item.resolvedURL = fetchURL
+            }
+
             let service = YTDLPService()
-            let metadata = try await service.fetchMetadata(url: url)
+            let metadata = try await service.fetchMetadata(url: fetchURL)
             item.metadata = metadata
             item.status = .ready
 

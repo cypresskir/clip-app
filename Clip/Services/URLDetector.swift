@@ -31,6 +31,10 @@ struct URLDetector {
             }
         }
 
+        if lowered.contains("reddit.com/") || lowered.contains("redd.it/") {
+            return .reddit
+        }
+
         return .unknown
     }
 

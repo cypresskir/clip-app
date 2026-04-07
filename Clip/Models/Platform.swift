@@ -5,6 +5,7 @@ enum Platform: String, Codable {
     case x
     case instagram
     case tiktok
+    case reddit
     case unknown
 
     var displayName: String {
@@ -13,6 +14,7 @@ enum Platform: String, Codable {
         case .x: return "X"
         case .instagram: return "Instagram"
         case .tiktok: return "TikTok"
+        case .reddit: return "Reddit"
         case .unknown: return "Unknown"
         }
     }
@@ -23,6 +25,7 @@ enum Platform: String, Codable {
         case .x: return "bubble.left.fill"
         case .instagram: return "camera.fill"
         case .tiktok: return "music.note"
+        case .reddit: return "bubble.left.and.text.bubble.right.fill"
         case .unknown: return "questionmark.circle"
         }
     }
@@ -44,6 +47,7 @@ enum Platform: String, Codable {
         case .x: return .primary
         case .instagram: return ClipTheme.lavender
         case .tiktok: return ClipTheme.accent
+        case .reddit: return ClipTheme.rosewood
         case .unknown: return .secondary
         }
     }

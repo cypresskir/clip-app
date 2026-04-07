@@ -51,7 +51,15 @@ class MainViewModel: ObservableObject {
         currentItem = item
 
         do {
-            let metadata = try await ytdlpService.fetchMetadata(url: trimmed)
+            // Reddit URLs need preprocessing — yt-dlp's Reddit extractor is broken
+            var resolvedURL = trimmed
+            if RedditResolver.isRedditURL(trimmed) {
+                let resolved = try await RedditResolver.resolve(trimmed)
+                resolvedURL = resolved.videoURL
+                item.resolvedURL = resolvedURL
+            }
+
+            let metadata = try await ytdlpService.fetchMetadata(url: resolvedURL)
             item.metadata = metadata
             item.status = .ready
 

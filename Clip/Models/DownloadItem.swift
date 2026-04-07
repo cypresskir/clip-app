@@ -81,6 +81,8 @@ class DownloadItem: ObservableObject, Identifiable {
     let id = UUID()
     let url: String
     let platform: Platform
+    /// For Reddit URLs: the resolved v.redd.it or external video URL
+    var resolvedURL: String?
 
     @Published var status: DownloadStatus = .analyzing
     @Published var metadata: VideoMetadata?
@@ -210,8 +212,14 @@ class DownloadItem: ObservableObject, Identifiable {
     }
 
     /// Create a new item with the same settings, ready for a fresh download.
+    /// The URL that should be passed to yt-dlp (resolved URL for Reddit, original URL otherwise)
+    var downloadURL: String {
+        resolvedURL ?? url
+    }
+
     func cloneForRedownload() -> DownloadItem {
         let clone = DownloadItem(url: url, platform: platform)
+        clone.resolvedURL = resolvedURL
         clone.metadata = metadata
         clone.thumbnailData = thumbnailData
         clone.selectedFormat = selectedFormat
