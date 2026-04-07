@@ -10,6 +10,7 @@ struct SettingsView: View {
     @State private var openAtLogin = SMAppService.mainApp.status == .enabled
     @ObservedObject var updateService: UpdateService
     @StateObject private var diagModel = BinaryDiagnosticsModel()
+    @State private var showDiagnostics = false
 
     var body: some View {
         Form {
@@ -117,22 +118,38 @@ struct SettingsView: View {
             }
 
             Section {
-                ForEach(diagModel.entries) { entry in
+                Button {
+                    withAnimation { showDiagnostics.toggle() }
+                    if showDiagnostics { diagModel.runChecks() }
+                } label: {
                     HStack {
-                        Text(entry.label)
+                        Text("Diagnostics")
                         Spacer()
-                        Text(entry.value)
-                            .foregroundStyle(entry.ok ? .secondary : ClipTheme.coral)
-                            .textSelection(.enabled)
+                        Image(systemName: "chevron.right")
+                            .rotationEffect(.degrees(showDiagnostics ? 90 : 0))
+                            .foregroundStyle(.secondary)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                if showDiagnostics {
+                    ForEach(diagModel.entries) { entry in
+                        HStack {
+                            Text(entry.label)
+                            Spacer()
+                            Text(entry.value)
+                                .foregroundStyle(entry.ok ? .secondary : ClipTheme.coral)
+                                .textSelection(.enabled)
+                        }
                     }
                 }
             } header: {
-                Text("Diagnostics")
+                Text("Advanced")
             }
         }
         .formStyle(.grouped)
-        .frame(width: 450, height: 520)
-        .onAppear { diagModel.runChecks() }
+        .frame(width: 450, height: 420)
     }
 
 }
