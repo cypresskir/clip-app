@@ -23,7 +23,7 @@ class ClipAppDelegate: NSObject, NSApplicationDelegate {
     @MainActor static let downloadVM = DownloadViewModel()
     @MainActor static let clipboardMonitor = ClipboardMonitor()
     @MainActor static let updateService = UpdateService()
-    private var statusBarController: StatusBarController?
+    private static var statusBarController: StatusBarController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSLog("[Clip] applicationDidFinishLaunching called")
@@ -58,12 +58,12 @@ class ClipAppDelegate: NSObject, NSApplicationDelegate {
 
     func enableMenuBar() {
         NSLog("[Clip] enableMenuBar called")
-        if statusBarController == nil {
-            statusBarController = StatusBarController(downloadViewModel: ClipAppDelegate.downloadVM)
+        if Self.statusBarController == nil {
+            Self.statusBarController = StatusBarController(downloadViewModel: ClipAppDelegate.downloadVM)
         }
     }
 
     func disableMenuBar() {
-        statusBarController = nil
+        Self.statusBarController = nil
     }
 }
