@@ -147,12 +147,18 @@ struct TranslucentWindowBackground: NSViewRepresentable {
 
 private class WindowBackgroundView: NSView {
     private var appearanceObserver: NSKeyValueObservation?
+    private var closeInterceptor: WindowCloseInterceptor?
 
     func configureWindow() {
         guard let window = self.window else { return }
         window.identifier = NSUserInterfaceItemIdentifier("ClipMainWindow")
         window.isOpaque = false
         applyBackground(to: window)
+
+        // Hide on close instead of destroy, so "Open Clip" can always find it
+        let interceptor = WindowCloseInterceptor()
+        closeInterceptor = interceptor
+        window.delegate = interceptor
 
         appearanceObserver = window.observe(\.effectiveAppearance) { [weak self] window, _ in
             self?.applyBackground(to: window)
@@ -173,6 +179,14 @@ private class WindowBackgroundView: NSView {
         } else {
             window.backgroundColor = NSColor.windowBackgroundColor
         }
+    }
+}
+
+/// Intercepts window close to hide instead of destroy.
+private class WindowCloseInterceptor: NSObject, NSWindowDelegate {
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        sender.orderOut(nil)
+        return false
     }
 }
 
