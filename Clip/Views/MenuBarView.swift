@@ -22,7 +22,8 @@ struct MenuBarView: View {
                         startQuickDownload()
                     }
                     .controlSize(.small)
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(ClipProminentButtonStyle())
+                    .font(.caption2)
                     Button {
                         clipboardMonitor.dismiss()
                     } label: {
@@ -32,11 +33,9 @@ struct MenuBarView: View {
                     .buttonStyle(.borderless)
                     .accessibilityLabel("Dismiss clipboard suggestion")
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(ClipTheme.accent.opacity(0.08))
-
-                Divider()
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(ClipTheme.accent.opacity(0.06))
             }
 
             // URL Input
@@ -46,8 +45,15 @@ struct MenuBarView: View {
                 }
 
                 TextField("Paste video URL...", text: $viewModel.urlText)
-                    .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(.plain)
                     .font(.system(size: 12))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .strokeBorder(.white.opacity(0.1), lineWidth: 0.5)
+                    )
                     .onSubmit { startQuickDownload() }
                     .onChange(of: viewModel.urlText) { viewModel.onURLChanged() }
 
@@ -62,7 +68,7 @@ struct MenuBarView: View {
                 .accessibilityLabel("Download")
                 .help("Download video (Return)")
             }
-            .padding(10)
+            .padding(12)
 
             if viewModel.isProcessing {
                 ProgressView()
@@ -75,11 +81,9 @@ struct MenuBarView: View {
                     .font(.caption2)
                     .foregroundStyle(ClipTheme.coral)
                     .lineLimit(2)
-                    .padding(.horizontal, 10)
-                    .padding(.bottom, 6)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 8)
             }
-
-            Divider()
 
             // Download list
             if downloadViewModel.downloads.isEmpty {
@@ -89,18 +93,17 @@ struct MenuBarView: View {
                     .padding(.vertical, 20)
             } else {
                 ScrollView {
-                    VStack(spacing: 0) {
+                    VStack(spacing: 2) {
                         ForEach(downloadViewModel.downloads.prefix(ClipConstants.menuBarMaxItems)) { item in
                             MenuBarDownloadRow(item: item)
                                 .environmentObject(downloadViewModel)
-                            Divider().padding(.leading, 30)
                         }
                     }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
                 }
                 .frame(maxHeight: 300)
             }
-
-            Divider()
 
             // Footer
             HStack(spacing: 12) {
@@ -125,8 +128,9 @@ struct MenuBarView: View {
             }
             .buttonStyle(.borderless)
             .font(.system(size: 11))
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(Color(nsColor: .controlBackgroundColor))
         }
         .frame(width: 340)
     }
@@ -188,17 +192,20 @@ struct MenuBarDownloadRow: View {
                     .lineLimit(1)
                     .truncationMode(.tail)
 
-                // Status row
                 statusView
             }
 
             Spacer(minLength: 4)
 
-            // Right side: cancel, retry, or size
             rightAccessory
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
+        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .strokeBorder(.white.opacity(0.06), lineWidth: 0.5)
+        )
     }
 
     @ViewBuilder
@@ -223,9 +230,8 @@ struct MenuBarDownloadRow: View {
                 .foregroundStyle(.secondary)
 
         case .downloading(let progress, let speed, _):
-            VStack(alignment: .leading, spacing: 2) {
-                ProgressView(value: progress)
-                    .controlSize(.mini)
+            VStack(alignment: .leading, spacing: 3) {
+                GlassProgressBar(value: progress, tint: ClipTheme.accent, height: 4)
                     .accessibilityValue("\(Int(progress * 100)) percent")
                 HStack(spacing: 6) {
                     Text("\(Int(progress * 100))%")
@@ -239,10 +245,8 @@ struct MenuBarDownloadRow: View {
             }
 
         case .compressing(let progress):
-            VStack(alignment: .leading, spacing: 2) {
-                ProgressView(value: progress)
-                    .controlSize(.mini)
-                    .tint(ClipTheme.rosewood)
+            VStack(alignment: .leading, spacing: 3) {
+                GlassProgressBar(value: progress, tint: ClipTheme.rosewood, height: 4)
                     .accessibilityValue("\(Int(progress * 100)) percent")
                 Text(item.status.statusText)
                     .font(.caption2)

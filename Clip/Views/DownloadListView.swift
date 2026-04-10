@@ -7,7 +7,7 @@ struct DownloadListView: View {
 
     var body: some View {
         if downloadViewModel.downloads.isEmpty {
-            VStack(spacing: 6) {
+            VStack(spacing: 8) {
                 Image(systemName: "arrow.down.circle")
                     .font(.title2)
                     .foregroundStyle(.tertiary)
@@ -18,16 +18,18 @@ struct DownloadListView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             ScrollView {
-                LazyVStack(spacing: 1) {
+                LazyVStack(spacing: 2) {
                     ForEach(downloadViewModel.downloads) { item in
                         DownloadRowView(item: item, isSelected: item.url == selectedURL)
                             .environmentObject(downloadViewModel)
-                            .contentShape(Rectangle())
+                            .contentShape(RoundedRectangle(cornerRadius: ClipTheme.smallRadius, style: .continuous))
                             .onTapGesture {
                                 onSelectURL(item.url)
                             }
                     }
                 }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
             }
         }
     }
@@ -52,7 +54,7 @@ struct DownloadRowView: View {
                 }
             }
             .frame(width: 48, height: 27)
-            .clipShape(RoundedRectangle(cornerRadius: 4))
+            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
 
             // Info
             VStack(alignment: .leading, spacing: 2) {
@@ -85,9 +87,8 @@ struct DownloadRowView: View {
                         .foregroundStyle(.secondary)
 
                 case .downloading(let progress, let speed, let eta):
-                    VStack(alignment: .leading, spacing: 2) {
-                        ProgressView(value: progress)
-                            .controlSize(.small)
+                    VStack(alignment: .leading, spacing: 3) {
+                        GlassProgressBar(value: progress, tint: ClipTheme.accent)
                             .accessibilityValue("\(Int(progress * 100)) percent")
                         HStack {
                             Text("\(Int(progress * 100))%")
@@ -99,10 +100,8 @@ struct DownloadRowView: View {
                     }
 
                 case .compressing(let progress):
-                    VStack(alignment: .leading, spacing: 2) {
-                        ProgressView(value: progress)
-                            .controlSize(.small)
-                            .tint(ClipTheme.rosewood)
+                    VStack(alignment: .leading, spacing: 3) {
+                        GlassProgressBar(value: progress, tint: ClipTheme.rosewood)
                             .accessibilityValue("\(Int(progress * 100)) percent")
                         Text(item.status.statusText)
                             .font(.caption2)
@@ -163,8 +162,16 @@ struct DownloadRowView: View {
                     .frame(width: 60, alignment: .trailing)
             }
         }
-        .padding(.horizontal)
-        .padding(.vertical, 6)
-        .background(isSelected ? ClipTheme.accent.opacity(0.1) : Color(.controlBackgroundColor))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(
+            isSelected
+            ? AnyShapeStyle(ClipTheme.accent.opacity(0.12))
+            : AnyShapeStyle(Color(nsColor: .controlBackgroundColor))
+        , in: RoundedRectangle(cornerRadius: ClipTheme.smallRadius, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: ClipTheme.smallRadius, style: .continuous)
+                .strokeBorder(.white.opacity(isSelected ? 0.15 : 0.06), lineWidth: 0.5)
+        )
     }
 }

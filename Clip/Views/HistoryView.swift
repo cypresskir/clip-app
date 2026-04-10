@@ -8,7 +8,7 @@ struct HistoryView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             if historyStore.entries.isEmpty {
-                VStack(spacing: 6) {
+                VStack(spacing: 8) {
                     Image(systemName: "clock")
                         .font(.title2)
                         .foregroundStyle(.tertiary)
@@ -18,20 +18,26 @@ struct HistoryView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                List {
-                    ForEach(historyStore.entries) { entry in
-                        HistoryRowView(entry: entry)
-                            .listRowBackground(entry.url == selectedURL ? ClipTheme.accent.opacity(0.1) : Color.clear)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                onSelectURL(entry.url)
-                            }
+                ScrollView {
+                    LazyVStack(spacing: 2) {
+                        ForEach(historyStore.entries) { entry in
+                            HistoryRowView(entry: entry, isSelected: entry.url == selectedURL)
+                                .contentShape(RoundedRectangle(cornerRadius: ClipTheme.smallRadius, style: .continuous))
+                                .onTapGesture {
+                                    onSelectURL(entry.url)
+                                }
+                                .contextMenu {
+                                    Button("Remove") {
+                                        if let idx = historyStore.entries.firstIndex(where: { $0.id == entry.id }) {
+                                            historyStore.remove(at: IndexSet(integer: idx))
+                                        }
+                                    }
+                                }
+                        }
                     }
-                    .onDelete { offsets in
-                        historyStore.remove(at: offsets)
-                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
                 }
-                .listStyle(.plain)
             }
         }
     }
@@ -39,10 +45,11 @@ struct HistoryView: View {
 
 struct HistoryRowView: View {
     let entry: DownloadHistoryEntry
+    var isSelected: Bool = false
 
     var body: some View {
         HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(entry.title)
                     .font(.caption)
                     .lineLimit(1)
@@ -81,6 +88,16 @@ struct HistoryRowView: View {
             .accessibilityLabel("Reveal in Finder")
             .help("Reveal in Finder")
         }
-        .padding(.vertical, 2)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(
+            isSelected
+            ? AnyShapeStyle(ClipTheme.accent.opacity(0.12))
+            : AnyShapeStyle(Color(nsColor: .controlBackgroundColor))
+        , in: RoundedRectangle(cornerRadius: ClipTheme.smallRadius, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: ClipTheme.smallRadius, style: .continuous)
+                .strokeBorder(.white.opacity(isSelected ? 0.15 : 0.06), lineWidth: 0.5)
+        )
     }
 }

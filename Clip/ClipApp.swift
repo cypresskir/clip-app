@@ -24,15 +24,19 @@ class ClipAppDelegate: NSObject, NSApplicationDelegate {
     @MainActor static let clipboardMonitor = ClipboardMonitor()
     @MainActor static let updateService = UpdateService()
     private static var statusBarController: StatusBarController?
+    private static var didFinishLaunching = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        NSLog("[Clip] applicationDidFinishLaunching called")
+        guard !Self.didFinishLaunching else {
+            NSLog("[Clip] applicationDidFinishLaunching called again — ignoring")
+            return
+        }
+        Self.didFinishLaunching = true
+        NSLog("[Clip] applicationDidFinishLaunching")
 
         let showInMenuBar = UserDefaults.standard.object(forKey: "showInMenuBar") as? Bool ?? true
         if showInMenuBar {
-            DispatchQueue.main.async {
-                self.enableMenuBar()
-            }
+            enableMenuBar()
         }
 
         let showInDock = UserDefaults.standard.object(forKey: "showInDock") as? Bool ?? true
@@ -40,9 +44,7 @@ class ClipAppDelegate: NSObject, NSApplicationDelegate {
             NSApp.setActivationPolicy(.accessory)
         }
 
-        DispatchQueue.main.async {
-            ClipAppDelegate.clipboardMonitor.start()
-        }
+        ClipAppDelegate.clipboardMonitor.start()
 
         // Check for updates on launch (after a short delay)
         Task { @MainActor in

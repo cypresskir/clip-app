@@ -26,9 +26,8 @@ struct UpdateBannerView: View {
                     Spacer()
 
                     if updateService.isDownloading {
-                        ProgressView(value: updateService.downloadProgress)
+                        GlassProgressBar(value: updateService.downloadProgress, tint: ClipTheme.accent)
                             .frame(width: 60)
-                            .controlSize(.small)
                         Text("\(Int(updateService.downloadProgress * 100))%")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
@@ -48,11 +47,9 @@ struct UpdateBannerView: View {
                         .font(.caption)
                     }
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(ClipTheme.accent.opacity(0.06))
-
-                Divider()
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(Color(nsColor: .controlBackgroundColor))
             }
         }
 
@@ -69,8 +66,8 @@ struct UpdateBannerView: View {
                     .buttonStyle(.borderless)
                     .font(.caption2)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
             .background(ClipTheme.coral.opacity(0.06))
         }
     }

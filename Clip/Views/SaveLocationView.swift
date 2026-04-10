@@ -17,11 +17,11 @@ struct SaveLocationView: View {
                 downloadViewModel.chooseSaveDirectory()
             }
             .controlSize(.small)
+            .buttonStyle(ClipBorderedButtonStyle())
+            .font(.caption)
         }
-        .padding(.horizontal)
-        .padding(.vertical, 8)
-        .background(.background.secondary)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .glassCard(cornerRadius: ClipTheme.smallRadius)
     }
-
 }

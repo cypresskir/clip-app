@@ -21,17 +21,28 @@ struct DownloadSectionView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Folder tab bar
+            // Glass segmented tab bar
             HStack(spacing: 0) {
-                ForEach(DownloadSectionTab.allCases, id: \.self) { tab in
-                    FolderTab(
-                        title: tab.rawValue,
-                        icon: tab.icon,
-                        isSelected: selectedTab == tab
-                    ) {
-                        selectedTab = tab
+                // Segmented control
+                HStack(spacing: 2) {
+                    ForEach(DownloadSectionTab.allCases, id: \.self) { tab in
+                        GlassSegment(
+                            title: tab.rawValue,
+                            icon: tab.icon,
+                            isSelected: selectedTab == tab
+                        ) {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                selectedTab = tab
+                            }
+                        }
                     }
                 }
+                .padding(3)
+                .background(Color(nsColor: .controlBackgroundColor), in: Capsule(style: .continuous))
+                .overlay(
+                    Capsule(style: .continuous)
+                        .strokeBorder(.white.opacity(0.1), lineWidth: 0.5)
+                )
 
                 Spacer()
 
@@ -48,20 +59,14 @@ struct DownloadSectionView: View {
                             downloadViewModel.removeCompleted()
                         }
                     }
-                    .padding(.trailing, 12)
                 }
 
                 if selectedTab == .history && !downloadViewModel.historyStore.entries.isEmpty {
                     ClearHistoryButton(historyStore: downloadViewModel.historyStore)
-                        .padding(.trailing, 12)
                 }
             }
-            .padding(.leading, 4)
-
-            // Divider sits flush under the tabs
-            Rectangle()
-                .fill(.separator)
-                .frame(height: 1)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
 
             // Content
             Group {
@@ -97,7 +102,7 @@ private struct ClearHistoryButton: View {
     }
 }
 
-struct FolderTab: View {
+struct GlassSegment: View {
     let title: String
     let icon: String
     let isSelected: Bool
@@ -114,28 +119,17 @@ struct FolderTab: View {
                     .font(.system(size: 11, weight: isSelected ? .semibold : .regular))
             }
             .foregroundStyle(isSelected ? .primary : .secondary)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 5)
             .background(
-                UnevenRoundedRectangle(
-                    topLeadingRadius: 6,
-                    bottomLeadingRadius: 0,
-                    bottomTrailingRadius: 0,
-                    topTrailingRadius: 6
-                )
-                .fill(isSelected ? Color(nsColor: .controlBackgroundColor) : .clear)
-            )
+                isSelected
+                ? AnyShapeStyle(Color(nsColor: .controlBackgroundColor))
+                : AnyShapeStyle(.clear)
+            , in: Capsule(style: .continuous))
             .overlay(
-                UnevenRoundedRectangle(
-                    topLeadingRadius: 6,
-                    bottomLeadingRadius: 0,
-                    bottomTrailingRadius: 0,
-                    topTrailingRadius: 6
-                )
-                .stroke(isSelected ? AnyShapeStyle(.separator) : AnyShapeStyle(.clear), lineWidth: 1)
+                Capsule(style: .continuous)
+                    .strokeBorder(.white.opacity(isSelected ? 0.15 : 0), lineWidth: 0.5)
             )
-            // Hide the bottom border of the selected tab so it merges with content
-            .offset(y: isSelected ? 1 : 0)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(title)

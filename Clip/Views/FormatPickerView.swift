@@ -6,7 +6,7 @@ struct FormatPickerView: View {
     @State private var customMB: String = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             Text("Format & Quality")
                 .font(.headline)
 
@@ -57,7 +57,7 @@ struct FormatPickerView: View {
 
             // Target size picker
             if !item.selectedFormat.isAudioOnly {
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 8) {
                     Text("Target Size")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
@@ -82,7 +82,14 @@ struct FormatPickerView: View {
                     if showCustomSize {
                         HStack(spacing: 6) {
                             TextField("MB", text: $customMB)
-                                .textFieldStyle(.roundedBorder)
+                                .textFieldStyle(.plain)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 5)
+                                .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                        .strokeBorder(.white.opacity(0.1), lineWidth: 0.5)
+                                )
                                 .frame(width: 70)
                                 .onSubmit { applyCustomSize() }
                             Text("MB")
@@ -90,7 +97,7 @@ struct FormatPickerView: View {
                                 .foregroundStyle(.secondary)
                             Button("Apply") { applyCustomSize() }
                                 .controlSize(.small)
-                                .buttonStyle(.bordered)
+                                .buttonStyle(ClipBorderedButtonStyle())
                         }
                     }
 
@@ -155,11 +162,10 @@ struct FormatPickerView: View {
                 }
             }
             .font(.subheadline)
-            .padding(.top, 4)
+            .padding(.top, 2)
         }
-        .padding()
-        .background(.background.secondary)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .padding(14)
+        .glassCard()
     }
 
     private func applyCustomSize() {
@@ -203,11 +209,18 @@ struct TargetSizeButton: View {
             Text(title)
                 .font(.caption)
                 .fontWeight(isSelected ? .semibold : .regular)
-                .padding(.vertical, 4)
-                .padding(.horizontal, 8)
-                .background(isSelected ? ClipTheme.accent.opacity(0.15) : Color.secondary.opacity(0.08))
-                .foregroundStyle(isSelected ? .primary : .secondary)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .padding(.vertical, 5)
+                .padding(.horizontal, 12)
+                .foregroundStyle(isSelected ? .white : .primary)
+                .background(
+                    isSelected
+                    ? AnyShapeStyle(ClipTheme.accent)
+                    : AnyShapeStyle(Color(nsColor: .controlBackgroundColor))
+                , in: Capsule(style: .continuous))
+                .overlay(
+                    Capsule(style: .continuous)
+                        .strokeBorder(.white.opacity(isSelected ? 0.2 : 0.1), lineWidth: 0.5)
+                )
         }
         .buttonStyle(.plain)
     }
@@ -222,9 +235,10 @@ struct FormatButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack {
+            HStack(spacing: 6) {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(isSelected ? ClipTheme.accent : .gray)
+                    .foregroundColor(isSelected ? ClipTheme.accent : .gray.opacity(0.5))
+                    .font(.system(size: 14))
                 VStack(alignment: .leading, spacing: 0) {
                     Text(title)
                         .font(.subheadline)
@@ -237,14 +251,17 @@ struct FormatButton: View {
                 }
                 Spacer()
             }
-            .padding(.vertical, 4)
+            .padding(.vertical, 5)
             .padding(.horizontal, 8)
-            .background(isSelected ? ClipTheme.accent.opacity(0.08) : .clear)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .background(
+                isSelected
+                ? AnyShapeStyle(ClipTheme.accent.opacity(0.1))
+                : AnyShapeStyle(.clear)
+            , in: RoundedRectangle(cornerRadius: ClipTheme.smallRadius, style: .continuous))
         }
         .buttonStyle(.plain)
         .disabled(isDisabled)
-        .opacity(isDisabled ? 0.4 : 1)
+        .opacity(isDisabled ? 0.35 : 1)
         .help(isDisabled ? "Not available for this video" : "")
     }
 }

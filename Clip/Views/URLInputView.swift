@@ -13,7 +13,14 @@ struct URLInputView: View {
                 }
 
                 TextField("Paste video URL...", text: $viewModel.urlText)
-                    .textFieldStyle(.roundedBorder)
+                    .textFieldStyle(.plain)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: ClipTheme.smallRadius, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: ClipTheme.smallRadius, style: .continuous)
+                            .strokeBorder(.white.opacity(0.12), lineWidth: 0.5)
+                    )
                     .onSubmit {
                         if viewModel.isValidURL {
                             Task { await viewModel.analyze() }
@@ -30,7 +37,7 @@ struct URLInputView: View {
                     }
                 }
                 .keyboardShortcut("v", modifiers: [.command, .shift])
-                .buttonStyle(.bordered)
+                .buttonStyle(ClipBorderedButtonStyle())
                 .controlSize(.small)
                 .help("Paste URL from clipboard (Cmd+Shift+V)")
 

@@ -16,7 +16,7 @@ class StatusBarController {
             rootView: MenuBarView()
                 .environmentObject(downloadViewModel)
         )
-        popover.contentSize = NSSize(width: 320, height: 400)
+        popover.contentSize = NSSize(width: 340, height: 400)
         popover.behavior = .transient
         popover.contentViewController = hostingView
 

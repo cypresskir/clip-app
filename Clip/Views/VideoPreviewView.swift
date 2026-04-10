@@ -4,7 +4,7 @@ struct VideoPreviewView: View {
     @ObservedObject var item: DownloadItem
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: 14) {
             // Thumbnail
             Group {
                 if let data = item.thumbnailData, let nsImage = NSImage(data: data) {
@@ -26,10 +26,10 @@ struct VideoPreviewView: View {
                 }
             }
             .frame(width: 180)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
 
             // Metadata
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 8) {
                 // Platform badge
                 HStack(spacing: 4) {
                     PlatformIcon(platform: item.platform, size: 14)
@@ -38,10 +38,9 @@ struct VideoPreviewView: View {
                         .fontWeight(.medium)
                         .foregroundStyle(item.platform.assetIconName != nil ? .primary : item.platform.color)
                 }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(item.platform.color.opacity(0.1))
-                .clipShape(Capsule())
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(item.platform.color.opacity(0.1), in: Capsule(style: .continuous))
 
                 // Title
                 Text(item.displayTitle)
@@ -50,12 +49,10 @@ struct VideoPreviewView: View {
 
                 if let metadata = item.metadata {
                     HStack(spacing: 12) {
-                        // Duration
                         Label(metadata.formattedDuration, systemImage: "clock")
                             .font(.caption)
                             .foregroundStyle(.secondary)
 
-                        // Upload date
                         if let date = metadata.formattedUploadDate {
                             Label(date, systemImage: "calendar")
                                 .font(.caption)
@@ -67,8 +64,7 @@ struct VideoPreviewView: View {
 
             Spacer()
         }
-        .padding()
-        .background(.background.secondary)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .padding(14)
+        .glassCard()
     }
 }

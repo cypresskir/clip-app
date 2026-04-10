@@ -4,7 +4,7 @@ struct ContentView: View {
     @StateObject private var mainViewModel = MainViewModel()
     @EnvironmentObject var downloadViewModel: DownloadViewModel
     @State private var isDragOver = false
-    @State private var downloadSectionHeight: CGFloat = 200
+    @State private var downloadSectionHeight: CGFloat = 220
 
     var body: some View {
         VStack(spacing: 0) {
@@ -13,14 +13,13 @@ struct ContentView: View {
 
             // URL Input
             URLInputView(viewModel: mainViewModel)
-                .padding()
-
-            Divider()
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
 
             // Video Preview + Format Picker
             if let item = mainViewModel.currentItem {
                 ScrollView {
-                    VStack(spacing: 16) {
+                    VStack(spacing: 12) {
                         VideoPreviewView(item: item)
 
                         if item.metadata != nil {
@@ -35,13 +34,14 @@ struct ContentView: View {
                                 .environmentObject(downloadViewModel)
                         }
                     }
-                    .padding()
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
                 }
             } else if !mainViewModel.isAnalyzing {
-                VStack(spacing: 8) {
+                VStack(spacing: 10) {
                     Spacer()
                     Image(systemName: isDragOver ? "arrow.down.circle.fill" : "arrow.down.circle")
-                        .font(.system(size: 40))
+                        .font(.system(size: 36, weight: .light))
                         .foregroundStyle(isDragOver ? AnyShapeStyle(ClipTheme.accent) : AnyShapeStyle(.tertiary))
                     Text(isDragOver ? "Drop URL here" : "Paste a video URL to get started")
                         .foregroundStyle(isDragOver ? .primary : .secondary)
@@ -50,15 +50,15 @@ struct ContentView: View {
                 }
             }
 
-            // Draggable divider
+            // Draggable divider — glass-style thin separator
             Rectangle()
                 .fill(Color.clear)
-                .frame(height: 6)
+                .frame(height: 8)
                 .contentShape(Rectangle())
                 .overlay(
-                    Rectangle()
-                        .fill(.separator)
-                        .frame(height: 1)
+                    Capsule()
+                        .fill(.quaternary)
+                        .frame(width: 36, height: 4)
                 )
                 .onHover { hovering in
                     if hovering {
@@ -75,13 +75,14 @@ struct ContentView: View {
                         }
                 )
 
-            // Downloads + History section with folder tabs
+            // Downloads + History section
             DownloadSectionView(selectedURL: mainViewModel.urlText, onSelectURL: { url in
                 mainViewModel.loadURL(url)
             })
                 .environmentObject(downloadViewModel)
                 .frame(height: downloadSectionHeight)
         }
+        .background(TranslucentWindowBackground())
         .frame(minWidth: 500, minHeight: 600)
         .onDrop(of: [.url, .text], isTargeted: $isDragOver) { providers in
             handleDrop(providers)
@@ -121,6 +122,21 @@ struct ContentView: View {
         }
         return false
     }
+}
+
+/// White window with 5% transparency.
+struct TranslucentWindowBackground: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async {
+            if let window = view.window {
+                window.isOpaque = false
+                window.backgroundColor = NSColor.white.withAlphaComponent(0.95)
+            }
+        }
+        return view
+    }
+    func updateNSView(_ nsView: NSView, context: Context) {}
 }
 
 struct DownloadButtonView: View {

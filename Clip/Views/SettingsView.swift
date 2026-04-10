@@ -60,6 +60,8 @@ struct SettingsView: View {
                     Button("Change...") {
                         ClipAppDelegate.downloadVM.chooseSaveDirectory()
                     }
+                    .buttonStyle(ClipBorderedButtonStyle())
+                    .font(.caption)
                 }
 
                 Picker("Preferred format", selection: $preferredFormat) {
@@ -101,16 +103,16 @@ struct SettingsView: View {
                         Button("Update") {
                             Task { await updateService.downloadAndInstall() }
                         }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
+                        .buttonStyle(ClipBorderedButtonStyle())
+                        .font(.caption)
                     } else {
                         Text("Up to date")
                             .foregroundStyle(.secondary)
                         Button("Check Now") {
                             Task { await updateService.checkForUpdate() }
                         }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
+                        .buttonStyle(ClipBorderedButtonStyle())
+                        .font(.caption)
                     }
                 }
             } header: {
@@ -119,7 +121,7 @@ struct SettingsView: View {
 
             Section {
                 Button {
-                    withAnimation { showDiagnostics.toggle() }
+                    withAnimation(.easeInOut(duration: 0.2)) { showDiagnostics.toggle() }
                     if showDiagnostics { diagModel.runChecks() }
                 } label: {
                     HStack {
