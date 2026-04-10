@@ -2,7 +2,7 @@
 
 A native macOS video downloader. Paste a link, pick your format, download.
 
-![Clip Screenshot](assets/screenshot.png)
+![Clip Screenshot](assets/Desktop - 4.png)
 
 ## Features
 
