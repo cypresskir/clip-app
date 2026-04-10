@@ -8,7 +8,7 @@ struct MenuBarView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Clipboard suggestion
-            if let detected = clipboardMonitor.detectedURL, viewModel.urlText.isEmpty {
+            if let detected = clipboardMonitor.detectedURL, viewModel.urlText.isEmpty, viewModel.pendingItem == nil {
                 HStack(spacing: 6) {
                     PlatformIcon(platform: URLDetector.detectPlatform(from: detected), size: 12)
                     Text("Clipboard URL detected")
@@ -19,7 +19,7 @@ struct MenuBarView: View {
                     Button("Download") {
                         viewModel.urlText = detected
                         clipboardMonitor.dismiss()
-                        startQuickDownload()
+                        analyzeURL()
                     }
                     .controlSize(.small)
                     .buttonStyle(ClipProminentButtonStyle())
@@ -38,42 +38,48 @@ struct MenuBarView: View {
                 .background(ClipTheme.accent.opacity(0.06))
             }
 
-            // URL Input
-            HStack(spacing: 8) {
-                if viewModel.detectedPlatform != .unknown {
-                    PlatformIcon(platform: viewModel.detectedPlatform, size: 14)
-                }
+            // URL Input (hidden when pending item is shown)
+            if viewModel.pendingItem == nil {
+                HStack(spacing: 8) {
+                    if viewModel.detectedPlatform != .unknown {
+                        PlatformIcon(platform: viewModel.detectedPlatform, size: 14)
+                    }
 
-                TextField("Paste video URL...", text: $viewModel.urlText)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 12))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 5)
-                    .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .strokeBorder(.white.opacity(0.1), lineWidth: 0.5)
-                    )
-                    .onSubmit { startQuickDownload() }
-                    .onChange(of: viewModel.urlText) { viewModel.onURLChanged() }
+                    TextField("Paste video URL...", text: $viewModel.urlText)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 12))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .strokeBorder(.white.opacity(0.1), lineWidth: 0.5)
+                        )
+                        .onSubmit { analyzeURL() }
+                        .onChange(of: viewModel.urlText) { viewModel.onURLChanged() }
 
-                Button {
-                    startQuickDownload()
-                } label: {
-                    Image(systemName: "arrow.down.circle.fill")
-                        .font(.title3)
+                    Button {
+                        analyzeURL()
+                    } label: {
+                        Image(systemName: "arrow.down.circle.fill")
+                            .font(.title3)
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(!viewModel.isValidURL || viewModel.isAnalyzing)
+                    .accessibilityLabel("Download")
+                    .help("Analyze video (Return)")
                 }
-                .buttonStyle(.borderless)
-                .disabled(!viewModel.isValidURL || viewModel.isProcessing)
-                .accessibilityLabel("Download")
-                .help("Download video (Return)")
+                .padding(12)
             }
-            .padding(12)
 
-            if viewModel.isProcessing {
-                ProgressView()
-                    .controlSize(.small)
-                    .padding(.bottom, 8)
+            if viewModel.isAnalyzing {
+                HStack(spacing: 6) {
+                    ProgressView().controlSize(.small)
+                    Text("Fetching video info...")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.bottom, 8)
             }
 
             if let error = viewModel.errorMessage {
@@ -85,13 +91,23 @@ struct MenuBarView: View {
                     .padding(.bottom, 8)
             }
 
+            // Pending item: format/resolution picker before download
+            if let item = viewModel.pendingItem {
+                MenuBarSettingsView(item: item) {
+                    // Confirm download
+                    viewModel.confirmDownload(downloadViewModel: downloadViewModel)
+                } onCancel: {
+                    viewModel.cancelPending()
+                }
+            }
+
             // Download list
-            if downloadViewModel.downloads.isEmpty {
+            if downloadViewModel.downloads.isEmpty && viewModel.pendingItem == nil {
                 Text("No downloads yet")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
                     .padding(.vertical, 20)
-            } else {
+            } else if !downloadViewModel.downloads.isEmpty {
                 ScrollView {
                     VStack(spacing: 2) {
                         ForEach(downloadViewModel.downloads.prefix(ClipConstants.menuBarMaxItems)) { item in
@@ -108,13 +124,7 @@ struct MenuBarView: View {
             // Footer
             HStack(spacing: 12) {
                 Button {
-                    NSApp.activate(ignoringOtherApps: true)
-                    for window in NSApp.windows {
-                        if window.title == "Clip" {
-                            window.makeKeyAndOrderFront(nil)
-                            break
-                        }
-                    }
+                    openMainWindow()
                 } label: {
                     Text("Open Clip")
                 }
@@ -135,34 +145,210 @@ struct MenuBarView: View {
         .frame(width: 340)
     }
 
-    private func startQuickDownload() {
+    private func analyzeURL() {
         let url = viewModel.urlText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard URLDetector.isValidURL(url) else { return }
+        viewModel.analyze(url: url, downloadViewModel: downloadViewModel)
+    }
 
-        viewModel.isProcessing = true
-        viewModel.errorMessage = nil
-
-        Task {
-            let error = await downloadViewModel.prepareAndStartDownload(
-                url: url,
-                platform: viewModel.detectedPlatform
-            )
-            if let error {
-                viewModel.errorMessage = error
-            } else {
-                viewModel.urlText = ""
-            }
-            viewModel.isProcessing = false
+    private func openMainWindow() {
+        NSApp.activate(ignoringOtherApps: true)
+        // Find main window by identifier set in TranslucentWindowBackground
+        if let window = NSApp.windows.first(where: { $0.identifier?.rawValue == "ClipMainWindow" }) {
+            window.makeKeyAndOrderFront(nil)
+        } else {
+            // Window was destroyed — reopen via responder chain
+            NSApp.sendAction(Selector(("newWindowForTab:")), to: nil, from: nil)
         }
     }
 }
+
+// MARK: - Compact Settings for Menu Bar
+
+struct MenuBarSettingsView: View {
+    @ObservedObject var item: DownloadItem
+    let onConfirm: () -> Void
+    let onCancel: () -> Void
+
+    @State private var showCustomSize = false
+    @State private var customMB = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            // Title bar
+            HStack(spacing: 6) {
+                PlatformIcon(platform: item.platform, size: 14)
+                Text(item.displayTitle)
+                    .font(.system(size: 11, weight: .medium))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                Spacer(minLength: 4)
+                Button {
+                    onCancel()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("Cancel")
+            }
+
+            // Duration + estimated size
+            if let meta = item.metadata {
+                HStack(spacing: 8) {
+                    if meta.duration != nil {
+                        Label(meta.formattedDuration, systemImage: "clock")
+                    }
+                    if let size = item.estimatedFileSize {
+                        Label(FileSizeFormatter.format(size), systemImage: "doc")
+                    }
+                }
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            }
+
+            // Format row
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Format")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                HStack(spacing: 4) {
+                    ForEach(OutputFormat.allCases) { format in
+                        MenuBarPill(format.rawValue, selected: item.selectedFormat == format) {
+                            item.selectedFormat = format
+                            item.updateEstimatedSize()
+                        }
+                    }
+                }
+            }
+
+            // Resolution row (hidden for audio-only)
+            if !item.selectedFormat.isAudioOnly {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Resolution")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                    HStack(spacing: 4) {
+                        let available = item.availableResolutions
+                        ForEach(OutputResolution.allCases) { res in
+                            let isAvailable = available.contains(res)
+                            MenuBarPill(res.displayName, selected: item.selectedResolution == res, disabled: !isAvailable) {
+                                item.selectedResolution = res
+                                item.updateEstimatedSize()
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Target size row
+            if !item.selectedFormat.isAudioOnly {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Target Size")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                    HStack(spacing: 4) {
+                        MenuBarPill("Original", selected: item.targetSize == .none && !showCustomSize) {
+                            showCustomSize = false
+                            item.targetSize = .none
+                        }
+                        MenuBarPill("Custom", selected: showCustomSize || item.targetSize != .none) {
+                            showCustomSize = true
+                        }
+
+                        if showCustomSize {
+                            HStack(spacing: 4) {
+                                TextField("MB", text: $customMB)
+                                    .textFieldStyle(.plain)
+                                    .font(.caption)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 3)
+                                    .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                                    .frame(width: 50)
+                                    .onSubmit { applyCustomSize() }
+                                Text("MB")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Download button
+            Button {
+                if showCustomSize && !customMB.isEmpty {
+                    applyCustomSize()
+                }
+                onConfirm()
+            } label: {
+                Label("Download", systemImage: "arrow.down.circle.fill")
+                    .font(.system(size: 12, weight: .medium))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(ClipProminentButtonStyle())
+        }
+        .padding(12)
+        .background(ClipTheme.accent.opacity(0.03))
+    }
+
+    private func applyCustomSize() {
+        if let mb = Int(customMB), mb > 0 {
+            item.targetSize = .custom(mb: mb)
+        }
+    }
+}
+
+/// Compact pill button for menu bar settings (smaller variant of SettingsPill)
+struct MenuBarPill: View {
+    let title: String
+    let isSelected: Bool
+    var isDisabled: Bool
+
+    let action: () -> Void
+
+    init(_ title: String, selected: Bool, disabled: Bool = false, action: @escaping () -> Void) {
+        self.title = title
+        self.isSelected = selected
+        self.isDisabled = disabled
+        self.action = action
+    }
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.caption2)
+                .fontWeight(isSelected ? .semibold : .regular)
+                .padding(.vertical, 3)
+                .padding(.horizontal, 8)
+                .foregroundStyle(isSelected ? .white : .primary)
+                .background(
+                    isSelected
+                    ? AnyShapeStyle(ClipTheme.accent)
+                    : AnyShapeStyle(Color(nsColor: .controlBackgroundColor)),
+                    in: Capsule(style: .continuous)
+                )
+                .overlay(
+                    Capsule(style: .continuous)
+                        .strokeBorder(.white.opacity(isSelected ? 0.2 : 0.06), lineWidth: 0.5)
+                )
+        }
+        .buttonStyle(.plain)
+        .disabled(isDisabled)
+        .opacity(isDisabled ? 0.3 : 1)
+    }
+}
+
+// MARK: - View Model
 
 @MainActor
 class MenuBarViewModel: ObservableObject {
     @Published var urlText = ""
     @Published var detectedPlatform: Platform = .unknown
-    @Published var isProcessing = false
+    @Published var isAnalyzing = false
     @Published var errorMessage: String?
+    @Published var pendingItem: DownloadItem?
 
     var isValidURL: Bool {
         URLDetector.isValidURL(urlText)
@@ -173,7 +359,78 @@ class MenuBarViewModel: ObservableObject {
         detectedPlatform = URLDetector.detectPlatform(from: trimmed)
         errorMessage = nil
     }
+
+    func analyze(url: String, downloadViewModel: DownloadViewModel) {
+        let normalized = URLDetector.normalizeURL(url)
+        if downloadViewModel.downloads.contains(where: { URLDetector.normalizeURL($0.url) == normalized && $0.status.isActive }) {
+            errorMessage = "This URL is already downloading"
+            return
+        }
+
+        isAnalyzing = true
+        errorMessage = nil
+        let platform = detectedPlatform
+
+        Task {
+            let item = DownloadItem(url: url, platform: platform)
+
+            do {
+                var fetchURL = url
+                if RedditResolver.isRedditURL(url) {
+                    let resolved = try await RedditResolver.resolve(url)
+                    fetchURL = resolved.videoURL
+                    item.resolvedURL = fetchURL
+                }
+
+                let service = YTDLPService()
+                let metadata = try await service.fetchMetadata(url: fetchURL)
+                item.metadata = metadata
+                item.status = .ready
+
+                if let thumbURL = metadata.thumbnail.flatMap({ URL(string: $0) }) {
+                    Task {
+                        if let (data, _) = try? await URLSession.shared.data(from: thumbURL) {
+                            item.thumbnailData = data
+                        }
+                    }
+                }
+
+                // Apply preferred settings
+                let preferredFormat = OutputFormat(rawValue: UserDefaults.standard.string(forKey: "preferredFormat") ?? "MP4") ?? .mp4
+                let prefResRaw = UserDefaults.standard.integer(forKey: "preferredResolution")
+                let preferredResolution = OutputResolution(rawValue: prefResRaw == 0 ? 1080 : prefResRaw) ?? .p1080
+
+                item.selectedFormat = preferredFormat
+                if item.availableResolutions.contains(preferredResolution) {
+                    item.selectedResolution = preferredResolution
+                } else if let highest = item.availableResolutions.first {
+                    item.selectedResolution = highest
+                }
+                item.updateEstimatedSize()
+
+                pendingItem = item
+                urlText = ""
+            } catch {
+                errorMessage = YTDLPService.friendlyError(error.localizedDescription)
+            }
+
+            isAnalyzing = false
+        }
+    }
+
+    func confirmDownload(downloadViewModel: DownloadViewModel) {
+        guard let item = pendingItem else { return }
+        downloadViewModel.downloads.insert(item, at: 0)
+        downloadViewModel.startDownload(for: item)
+        pendingItem = nil
+    }
+
+    func cancelPending() {
+        pendingItem = nil
+    }
 }
+
+// MARK: - Download Row
 
 struct MenuBarDownloadRow: View {
     @ObservedObject var item: DownloadItem

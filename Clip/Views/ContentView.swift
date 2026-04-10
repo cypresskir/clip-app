@@ -21,33 +21,42 @@ struct ContentView: View {
                 ScrollView {
                     VStack(spacing: 12) {
                         VideoPreviewView(item: item)
+                            .transition(.opacity.combined(with: .scale(scale: 0.98)))
 
                         if item.metadata != nil {
                             FormatPickerView(item: item)
+                                .transition(.opacity.combined(with: .move(edge: .bottom)))
 
                             // Save location
                             SaveLocationView()
                                 .environmentObject(downloadViewModel)
+                                .transition(.opacity)
 
                             // Download button
                             DownloadButtonView(item: item)
                                 .environmentObject(downloadViewModel)
+                                .transition(.opacity.combined(with: .move(edge: .bottom)))
                         }
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
+                    .animation(.easeOut(duration: 0.3), value: item.metadata != nil)
                 }
+                .transition(.opacity)
             } else if !mainViewModel.isAnalyzing {
                 VStack(spacing: 10) {
                     Spacer()
                     Image(systemName: isDragOver ? "arrow.down.circle.fill" : "arrow.down.circle")
                         .font(.system(size: 36, weight: .light))
                         .foregroundStyle(isDragOver ? AnyShapeStyle(ClipTheme.accent) : AnyShapeStyle(.tertiary))
+                        .animation(.easeInOut(duration: 0.2), value: isDragOver)
                     Text(isDragOver ? "Drop URL here" : "Paste a video URL to get started")
                         .foregroundStyle(isDragOver ? .primary : .secondary)
                         .font(.subheadline)
+                        .animation(.easeInOut(duration: 0.2), value: isDragOver)
                     Spacer()
                 }
+                .transition(.opacity)
             }
 
             // Draggable divider — glass-style thin separator
@@ -124,19 +133,47 @@ struct ContentView: View {
     }
 }
 
-/// White window with 5% transparency.
+/// Window background with 5% transparency, adapts to light/dark mode.
 struct TranslucentWindowBackground: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView {
-        let view = NSView()
+        let view = WindowBackgroundView()
         DispatchQueue.main.async {
-            if let window = view.window {
-                window.isOpaque = false
-                window.backgroundColor = NSColor.white.withAlphaComponent(0.95)
-            }
+            view.configureWindow()
         }
         return view
     }
     func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
+private class WindowBackgroundView: NSView {
+    private var appearanceObserver: NSKeyValueObservation?
+
+    func configureWindow() {
+        guard let window = self.window else { return }
+        window.identifier = NSUserInterfaceItemIdentifier("ClipMainWindow")
+        window.isOpaque = false
+        applyBackground(to: window)
+
+        appearanceObserver = window.observe(\.effectiveAppearance) { [weak self] window, _ in
+            self?.applyBackground(to: window)
+        }
+    }
+
+    private func applyBackground(to window: NSWindow) {
+        let isDark = window.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        if isDark {
+            // Resolve dynamic color within the dark appearance context
+            var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+            window.effectiveAppearance.performAsCurrentDrawingAppearance {
+                if let resolved = NSColor.windowBackgroundColor.usingColorSpace(.sRGB) {
+                    resolved.getRed(&r, green: &g, blue: &b, alpha: &a)
+                }
+            }
+            window.backgroundColor = NSColor(srgbRed: r, green: g, blue: b, alpha: 0.95)
+        } else {
+            window.backgroundColor = NSColor.windowBackgroundColor
+        }
+    }
 }
 
 struct DownloadButtonView: View {

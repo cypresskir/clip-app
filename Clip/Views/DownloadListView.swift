@@ -173,5 +173,7 @@ struct DownloadRowView: View {
             RoundedRectangle(cornerRadius: ClipTheme.smallRadius, style: .continuous)
                 .strokeBorder(.white.opacity(isSelected ? 0.15 : 0.06), lineWidth: 0.5)
         )
+        .animation(.easeInOut(duration: 0.2), value: isSelected)
+        .animation(.easeInOut(duration: 0.25), value: item.status)
     }
 }

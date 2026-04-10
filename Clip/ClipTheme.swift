@@ -54,6 +54,7 @@ struct GlassCard: ViewModifier {
             .background(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(Color(nsColor: .controlBackgroundColor))
+                    .shadow(color: .black.opacity(0.06), radius: 4, y: 2)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
@@ -80,18 +81,18 @@ struct ClipProminentButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .fontWeight(.medium)
-            .foregroundStyle(.white)
+            .foregroundStyle(isEnabled ? .white : .white.opacity(0.5))
             .padding(.vertical, 8)
             .padding(.horizontal, 18)
             .background(
                 Capsule(style: .continuous)
                     .fill(isEnabled
                           ? (configuration.isPressed ? ClipTheme.accent.opacity(0.65) : ClipTheme.accent)
-                          : ClipTheme.accent.opacity(0.3))
+                          : ClipTheme.accent.opacity(0.45))
             )
             .overlay(
                 Capsule(style: .continuous)
-                    .strokeBorder(.white.opacity(isEnabled ? 0.2 : 0.05), lineWidth: 0.5)
+                    .strokeBorder(.white.opacity(isEnabled ? 0.2 : 0.08), lineWidth: 0.5)
             )
             .contentShape(Capsule())
             .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
@@ -116,6 +117,7 @@ struct GlassProgressBar: View {
                 Capsule(style: .continuous)
                     .fill(tint)
                     .frame(width: max(geo.size.height, geo.size.width * CGFloat(min(max(value, 0), 1))))
+                    .animation(.easeOut(duration: 0.3), value: value)
             }
         }
         .frame(height: height)
@@ -139,6 +141,8 @@ struct ClipBorderedButtonStyle: ButtonStyle {
                     .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
             )
             .contentShape(Capsule())
+            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
             .opacity(configuration.isPressed ? 0.7 : 1.0)
+            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
     }
 }

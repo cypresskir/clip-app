@@ -160,9 +160,16 @@ class DownloadItem: ObservableObject, Identifiable {
                 .filter { !$0.hasVideo && $0.hasAudio }
                 .sorted { ($0.tbr ?? 0) > ($1.tbr ?? 0) }
             if let best = audioFormats.first {
-                if let size = best.estimatedSize { return size }
-                if let tbr = best.tbr, duration > 0 {
-                    return Int64(tbr * 1000.0 * duration / 8.0)
+                var size: Int64?
+                if let s = best.estimatedSize { size = s }
+                else if let tbr = best.tbr, duration > 0 {
+                    size = Int64(tbr * 1000.0 * duration / 8.0)
+                }
+                if var s = size {
+                    if clipEnabled, let clip = clipRange, duration > 0 {
+                        s = Int64(Double(s) * (clip.duration / duration))
+                    }
+                    return s
                 }
             }
             return nil

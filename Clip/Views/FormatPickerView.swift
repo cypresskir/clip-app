@@ -4,100 +4,104 @@ struct FormatPickerView: View {
     @ObservedObject var item: DownloadItem
     @State private var showCustomSize = false
     @State private var customMB: String = ""
+    @State private var clipToggleCount = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Format & Quality")
                 .font(.headline)
 
-            HStack(alignment: .top, spacing: 16) {
-                // Format column
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Format")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+            // Format row
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Format")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
 
+                HStack(spacing: 6) {
                     ForEach(OutputFormat.allCases) { format in
-                        FormatButton(
+                        SettingsPill(
                             title: format.rawValue,
-                            subtitle: format.subtitle,
                             isSelected: item.selectedFormat == format
                         ) {
-                            item.selectedFormat = format
-                            item.updateEstimatedSize()
-                        }
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                // Resolution column (hidden for audio-only)
-                if !item.selectedFormat.isAudioOnly {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Resolution")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-
-                        let available = item.availableResolutions
-                        ForEach(OutputResolution.allCases) { res in
-                            let isAvailable = available.contains(res)
-                            FormatButton(
-                                title: res.displayName,
-                                subtitle: nil,
-                                isSelected: item.selectedResolution == res,
-                                isDisabled: !isAvailable
-                            ) {
-                                item.selectedResolution = res
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                item.selectedFormat = format
                                 item.updateEstimatedSize()
                             }
                         }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+
+            // Resolution row (hidden for audio-only)
+            if !item.selectedFormat.isAudioOnly {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Resolution")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
+                    HStack(spacing: 6) {
+                        let available = item.availableResolutions
+                        ForEach(OutputResolution.allCases) { res in
+                            let isAvailable = available.contains(res)
+                            SettingsPill(
+                                title: res.displayName,
+                                isSelected: item.selectedResolution == res,
+                                isDisabled: !isAvailable
+                            ) {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    item.selectedResolution = res
+                                    item.updateEstimatedSize()
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
             // Target size picker
             if !item.selectedFormat.isAudioOnly {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text("Target Size")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
 
                     HStack(spacing: 6) {
-                        TargetSizeButton(
+                        SettingsPill(
                             title: "Original",
                             isSelected: item.targetSize == .none && !showCustomSize
                         ) {
-                            showCustomSize = false
-                            item.targetSize = .none
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                showCustomSize = false
+                                item.targetSize = .none
+                            }
                         }
 
-                        TargetSizeButton(
+                        SettingsPill(
                             title: "Custom",
                             isSelected: showCustomSize || item.targetSize != .none
                         ) {
-                            showCustomSize = true
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                showCustomSize = true
+                            }
                         }
-                    }
 
-                    if showCustomSize {
-                        HStack(spacing: 6) {
-                            TextField("MB", text: $customMB)
-                                .textFieldStyle(.plain)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 5)
-                                .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                        .strokeBorder(.white.opacity(0.1), lineWidth: 0.5)
-                                )
-                                .frame(width: 70)
-                                .onSubmit { applyCustomSize() }
-                            Text("MB")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Button("Apply") { applyCustomSize() }
-                                .controlSize(.small)
-                                .buttonStyle(ClipBorderedButtonStyle())
+                        if showCustomSize {
+                            HStack(spacing: 6) {
+                                TextField("MB", text: $customMB)
+                                    .textFieldStyle(.plain)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 5)
+                                    .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                            .strokeBorder(.white.opacity(0.1), lineWidth: 0.5)
+                                    )
+                                    .frame(width: 70)
+                                    .onSubmit { applyCustomSize() }
+                                Text("MB")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
 
@@ -113,17 +117,30 @@ struct FormatPickerView: View {
                     Toggle(isOn: $item.clipEnabled) {
                         Label("Download clip", systemImage: "scissors")
                             .font(.subheadline)
+                            .symbolEffect(.bounce, value: clipToggleCount)
                     }
                     .toggleStyle(.checkbox)
                     .onChange(of: item.clipEnabled) {
-                        if item.clipEnabled && item.clipRange == nil {
-                            item.clipRange = ClipRange(start: 0, end: duration)
+                        clipToggleCount += 1
+                        withAnimation(.spring(duration: 0.35, bounce: 0.2)) {
+                            if item.clipEnabled && item.clipRange == nil {
+                                item.clipRange = ClipRange(start: 0, end: duration)
+                            }
+                            item.updateEstimatedSize()
                         }
-                        item.updateEstimatedSize()
                     }
 
                     if item.clipEnabled {
                         ClipRangeView(item: item)
+                            .transition(
+                                .asymmetric(
+                                    insertion: .opacity
+                                        .combined(with: .scale(scale: 0.95, anchor: .top))
+                                        .combined(with: .move(edge: .top)),
+                                    removal: .opacity
+                                        .combined(with: .scale(scale: 0.98, anchor: .top))
+                                )
+                            )
                             .onChange(of: item.clipRange) {
                                 item.updateEstimatedSize()
                             }
@@ -164,6 +181,7 @@ struct FormatPickerView: View {
             .font(.subheadline)
             .padding(.top, 2)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
         .glassCard()
     }
@@ -176,8 +194,9 @@ struct FormatPickerView: View {
 
     @ViewBuilder
     private var targetSizeInfo: some View {
-        if let duration = item.metadata?.duration, duration > 0,
+        if let fullDuration = item.metadata?.duration, fullDuration > 0,
            let targetBytes = item.targetSize.bytes {
+            let duration = (item.clipEnabled ? item.clipRange?.duration : nil) ?? fullDuration
             let audioBitrate: Double = 128_000 // 128kbps audio
             let availableForVideo = Double(targetBytes) * 8.0 - (audioBitrate * duration)
             let videoBitrate = max(availableForVideo / duration, 0)
@@ -199,69 +218,37 @@ struct FormatPickerView: View {
     }
 }
 
-struct TargetSizeButton: View {
+/// Pill button used for format/resolution/target-size selection.
+/// Shared between main window and menu bar.
+struct SettingsPill: View {
     let title: String
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.caption)
-                .fontWeight(isSelected ? .semibold : .regular)
-                .padding(.vertical, 5)
-                .padding(.horizontal, 12)
-                .foregroundStyle(isSelected ? .white : .primary)
-                .background(
-                    isSelected
-                    ? AnyShapeStyle(ClipTheme.accent)
-                    : AnyShapeStyle(Color(nsColor: .controlBackgroundColor))
-                , in: Capsule(style: .continuous))
-                .overlay(
-                    Capsule(style: .continuous)
-                        .strokeBorder(.white.opacity(isSelected ? 0.2 : 0.1), lineWidth: 0.5)
-                )
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-struct FormatButton: View {
-    let title: String
-    let subtitle: String?
     let isSelected: Bool
     var isDisabled: Bool = false
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 6) {
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(isSelected ? ClipTheme.accent : .gray.opacity(0.5))
-                    .font(.system(size: 14))
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(title)
-                        .font(.subheadline)
-                        .fontWeight(isSelected ? .semibold : .regular)
-                    if let subtitle = subtitle {
-                        Text(subtitle)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                Spacer()
-            }
-            .padding(.vertical, 5)
-            .padding(.horizontal, 8)
-            .background(
-                isSelected
-                ? AnyShapeStyle(ClipTheme.accent.opacity(0.1))
-                : AnyShapeStyle(.clear)
-            , in: RoundedRectangle(cornerRadius: ClipTheme.smallRadius, style: .continuous))
+            Text(title)
+                .font(.subheadline)
+                .fontWeight(isSelected ? .semibold : .regular)
+                .padding(.vertical, 6)
+                .padding(.horizontal, 14)
+                .foregroundStyle(isSelected ? .white : .primary)
+                .background(
+                    isSelected
+                    ? AnyShapeStyle(ClipTheme.accent)
+                    : AnyShapeStyle(Color(nsColor: .controlBackgroundColor)),
+                    in: Capsule(style: .continuous)
+                )
+                .overlay(
+                    Capsule(style: .continuous)
+                        .strokeBorder(.white.opacity(isSelected ? 0.2 : 0.06), lineWidth: 0.5)
+                )
         }
         .buttonStyle(.plain)
         .disabled(isDisabled)
         .opacity(isDisabled ? 0.35 : 1)
+        .animation(.easeInOut(duration: 0.2), value: isSelected)
         .help(isDisabled ? "Not available for this video" : "")
     }
 }

@@ -47,7 +47,7 @@ struct ClipRangeView: View {
                         )
 
                     // End handle
-                    ClipHandle(color: ClipTheme.rosewood)
+                    ClipHandle(color: ClipTheme.accent)
                         .frame(width: handleWidth, height: trackHeight + 8)
                         .offset(x: endX)
                         .gesture(

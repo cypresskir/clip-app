@@ -74,10 +74,13 @@ struct DownloadSectionView: View {
                 case .downloads:
                     DownloadListView(selectedURL: selectedURL, onSelectURL: onSelectURL)
                         .environmentObject(downloadViewModel)
+                        .transition(.opacity)
                 case .history:
                     HistoryView(historyStore: downloadViewModel.historyStore, selectedURL: selectedURL, onSelectURL: onSelectURL)
+                        .transition(.opacity)
                 }
             }
+            .animation(.easeInOut(duration: 0.2), value: selectedTab)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
@@ -132,6 +135,7 @@ struct GlassSegment: View {
             )
         }
         .buttonStyle(.plain)
+        .animation(.easeInOut(duration: 0.2), value: isSelected)
         .accessibilityLabel(title)
     }
 }
