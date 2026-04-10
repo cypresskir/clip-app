@@ -21,13 +21,13 @@ class StatusBarController {
         popover.contentViewController = hostingView
 
         if let button = statusItem?.button {
-            if let appIcon = NSApp.applicationIconImage {
+            if let menuIcon = NSImage(named: "MenuBarIcon") {
                 let size = NSSize(width: 22, height: 22)
                 let resized = NSImage(size: size, flipped: false) { rect in
-                    appIcon.draw(in: rect)
+                    menuIcon.draw(in: rect)
                     return true
                 }
-                resized.isTemplate = false
+                resized.isTemplate = true
                 baseImage = resized
                 button.image = resized
             } else {
